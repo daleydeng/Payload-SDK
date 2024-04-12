@@ -1,4 +1,6 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.15)
+
+project(entry)
 
 if (NOT USE_SYSTEM_ARCH)
     # select use platform 'LINUX' or 'RTOS' here, reset cache and reload cmake project
@@ -17,7 +19,10 @@ if (USE_SYSTEM_ARCH MATCHES RTOS)
     set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 endif ()
 
-project(entry)
+find_package(PkgConfig)
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules")
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+include_directories(${CMAKE_PREFIX_PATH}/include)
 
 # Disable in-source builds to prevent source tree corruption.
 if (" ${CMAKE_SOURCE_DIR}" STREQUAL " ${CMAKE_BINARY_DIR}")

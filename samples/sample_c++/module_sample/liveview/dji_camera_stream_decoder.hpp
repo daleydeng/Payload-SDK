@@ -76,9 +76,8 @@ private:
     SwsContext *pSwsCtx;
 
     AVFrame *pFrameYUV;
-    AVFrame *pFrameRGB;
 #endif
-    uint8_t *rgbBuf;
+    uint8_t *rgbBuf[4];
     size_t bufSize;
 };
 

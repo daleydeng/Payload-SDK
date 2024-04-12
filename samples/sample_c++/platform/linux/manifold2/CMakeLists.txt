@@ -51,8 +51,6 @@ else ()
     message(FATAL_ERROR "FATAL: Please confirm your platform.")
 endif ()
 
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../common/3rdparty)
-
 link_directories(${CMAKE_CURRENT_LIST_DIR}/../../../../../psdk_lib/lib/${TOOLCHAIN_NAME})
 link_libraries(${CMAKE_CURRENT_LIST_DIR}/../../../../../psdk_lib/lib/${TOOLCHAIN_NAME}/libpayloadsdk.a -lstdc++)
 
@@ -110,7 +108,7 @@ if (OPUS_FOUND)
     message(STATUS " - Libraries: ${OPUS_LIBRARY}")
 
     add_definitions(-DOPUS_INSTALLED)
-    target_link_libraries(${PROJECT_NAME} /usr/local/lib/libopus.a)
+    target_link_libraries(${PROJECT_NAME} ${OPUS_LIBRARY})
 else ()
     message(STATUS "Cannot Find OPUS")
 endif (OPUS_FOUND)

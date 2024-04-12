@@ -24,6 +24,12 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "dji_camera_stream_decoder.hpp"
+
+extern "C" {
+#include <libavcodec/avcodec.h>
+#include <libavutil/imgutils.h>
+}
+
 #include "unistd.h"
 #include "pthread.h"
 #include "dji_logger.h"
@@ -49,8 +55,7 @@ DJICameraStreamDecoder::DJICameraStreamDecoder()
       pCodecParserCtx(nullptr),
       pSwsCtx(nullptr),
       pFrameYUV(nullptr),
-      pFrameRGB(nullptr),
-      rgbBuf(nullptr),
+      rgbBuf{NULL, NULL, NULL, NULL},
 #endif
       bufSize(0)
 {
@@ -78,14 +83,13 @@ bool DJICameraStreamDecoder::init()
     }
 
 #ifdef FFMPEG_INSTALLED
-    avcodec_register_all();
     pCodecCtx = avcodec_alloc_context3(nullptr);
     if (!pCodecCtx) {
         return false;
     }
 
     pCodecCtx->thread_count = 4;
-    pCodec = avcodec_find_decoder(AV_CODEC_ID_H264);
+    pCodec = (AVCodec*) avcodec_find_decoder(AV_CODEC_ID_H264);
     if (!pCodec || avcodec_open2(pCodecCtx, pCodec, nullptr) < 0) {
         return false;
     }
@@ -97,11 +101,6 @@ bool DJICameraStreamDecoder::init()
 
     pFrameYUV = av_frame_alloc();
     if (!pFrameYUV) {
-        return false;
-    }
-
-    pFrameRGB = av_frame_alloc();
-    if (!pFrameRGB) {
         return false;
     }
 
@@ -128,7 +127,7 @@ void DJICameraStreamDecoder::cleanup()
     }
 
     if (nullptr != pFrameYUV) {
-        av_free(pFrameYUV);
+        av_frame_free(&pFrameYUV);
         pFrameYUV = nullptr;
     }
 
@@ -147,15 +146,10 @@ void DJICameraStreamDecoder::cleanup()
         pCodecCtx = nullptr;
     }
 
-    if (nullptr != rgbBuf) {
-        av_free(rgbBuf);
-        rgbBuf = nullptr;
+    if (NULL != rgbBuf) {
+        av_freep(&rgbBuf[0]);
     }
 
-    if (nullptr != pFrameRGB) {
-        av_free(pFrameRGB);
-        pFrameRGB = nullptr;
-    }
 #endif
     pthread_mutex_unlock(&decodemutex);
 }
@@ -188,10 +182,16 @@ void DJICameraStreamDecoder::decodeBuffer(const uint8_t *buf, int bufLen)
     const uint8_t *pData = buf;
     int remainingLen = bufLen;
     int processedLen = 0;
+    int ret;
+    int dst_linesize[4];
 
 #ifdef FFMPEG_INSTALLED
-    AVPacket pkt;
-    av_init_packet(&pkt);
+    AVPacket *pkt = av_packet_alloc();
+    if (!pkt) {
+        fprintf(stderr, "Error allocating AVPacket");
+        exit(1);
+    }
+
     pthread_mutex_lock(&decodemutex);
     while (remainingLen > 0) {
         if (!pCodecParserCtx || !pCodecCtx) {
@@ -199,51 +199,58 @@ void DJICameraStreamDecoder::decodeBuffer(const uint8_t *buf, int bufLen)
             break;
         }
         processedLen = av_parser_parse2(pCodecParserCtx, pCodecCtx,
-                                        &pkt.data, &pkt.size,
+                                        &pkt->data, &pkt->size,
                                         pData, remainingLen,
                                         AV_NOPTS_VALUE, AV_NOPTS_VALUE, AV_NOPTS_VALUE);
         remainingLen -= processedLen;
         pData += processedLen;
 
-        if (pkt.size > 0) {
-            int gotPicture = 0;
-            avcodec_decode_video2(pCodecCtx, pFrameYUV, &gotPicture, &pkt);
+        ret = avcodec_send_packet(pCodecCtx, pkt);
+        if (ret < 0) {
+            fprintf(stderr, "Error sending a packet for decoding\n");
+            exit(1);
+        }   
 
-            if (!gotPicture) {
-                ////DSTATUS_PRIVATE("Got Frame, but no picture\n");
-                continue;
-            } else {
-                int w = pFrameYUV->width;
-                int h = pFrameYUV->height;
-                ////DSTATUS_PRIVATE("Got picture! size=%dx%d\n", w, h);
 
-                if (nullptr == pSwsCtx) {
-                    pSwsCtx = sws_getContext(w, h, pCodecCtx->pix_fmt,
-                                             w, h, AV_PIX_FMT_RGB24,
-                                             4, nullptr, nullptr, nullptr);
+        while (ret >= 0) {
+            ret = avcodec_receive_frame(pCodecCtx, pFrameYUV);
+            if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+                goto out;
+            else if (ret < 0) {
+                fprintf(stderr, "Error during decoding\n");
+                exit(1);
+            }
+            
+            int w = pFrameYUV->width;
+            int h = pFrameYUV->height;
+            ////DSTATUS_PRIVATE("Got picture! size=%dx%d\n", w, h);
+
+            if (nullptr == pSwsCtx) {
+                pSwsCtx = sws_getContext(w, h, pCodecCtx->pix_fmt,
+                                            w, h, AV_PIX_FMT_RGB24,
+                                            4, nullptr, nullptr, nullptr);
+            }
+
+            if (NULL == rgbBuf) {
+                if ((bufSize = av_image_alloc(rgbBuf, dst_linesize, w, h, AV_PIX_FMT_RGB24, 1)) < 0) {
+                    fprintf(stderr, "Could not allocate image\n");
+                    exit(1);
                 }
+            }
 
-                if (nullptr == rgbBuf) {
-                    bufSize = avpicture_get_size(AV_PIX_FMT_RGB24, w, h);
-                    rgbBuf = (uint8_t *) av_malloc(bufSize);
-                    avpicture_fill((AVPicture *) pFrameRGB, rgbBuf, AV_PIX_FMT_RGB24, w, h);
-                }
+            if (nullptr != pSwsCtx && nullptr != rgbBuf) {
+                sws_scale(pSwsCtx,
+                            (uint8_t const *const *) pFrameYUV->data, pFrameYUV->linesize, 0, pFrameYUV->height,
+                            rgbBuf, dst_linesize);
 
-                if (nullptr != pSwsCtx && nullptr != rgbBuf) {
-                    sws_scale(pSwsCtx,
-                              (uint8_t const *const *) pFrameYUV->data, pFrameYUV->linesize, 0, pFrameYUV->height,
-                              pFrameRGB->data, pFrameRGB->linesize);
-
-                    pFrameRGB->height = h;
-                    pFrameRGB->width = w;
-
-                    decodedImageHandler.writeNewImageWithLock(pFrameRGB->data[0], bufSize, w, h);
-                }
+                decodedImageHandler.writeNewImageWithLock(rgbBuf[0], bufSize, w, h);
             }
         }
     }
+
+out:
     pthread_mutex_unlock(&decodemutex);
-    av_free_packet(&pkt);
+    av_packet_free(&pkt);
 #endif
 }
 

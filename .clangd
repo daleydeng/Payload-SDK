@@ -1,0 +1,3 @@
+CompileFlags:
+    Add:
+        - "-I/home/vision/micromamba/envs/dji/lib/gcc/x86_64-conda-linux-gnu/12.3.0/include"

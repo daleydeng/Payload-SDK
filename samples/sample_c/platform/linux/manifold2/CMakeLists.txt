@@ -57,7 +57,6 @@ add_executable(${PROJECT_NAME}
         ${MODULE_COMMON_SRC}
         ${MODULE_HAL_SRC})
 
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../common/3rdparty)
 find_package(OPUS REQUIRED)
 if (OPUS_FOUND)
     message(STATUS "Found OPUS installed in the system")
@@ -65,7 +64,7 @@ if (OPUS_FOUND)
     message(STATUS " - Libraries: ${OPUS_LIBRARY}")
 
     add_definitions(-DOPUS_INSTALLED)
-    target_link_libraries(${PROJECT_NAME} /usr/local/lib/libopus.a)
+    target_link_libraries(${PROJECT_NAME} ${OPUS_LIBRARY})
 else ()
     message(STATUS "Cannot Find OPUS")
 endif (OPUS_FOUND)

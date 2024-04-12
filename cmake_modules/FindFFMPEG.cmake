@@ -11,6 +11,7 @@
 # This is useful to do it this way so that we can always add more libraries
 # if needed to FFMPEG_LIBRARIES if ffmpeg ever changes...
 
+
 # if ffmpeg headers are all in one directory
 FIND_PATH(FFMPEG_INCLUDE_DIR avformat.h
        PATHS
