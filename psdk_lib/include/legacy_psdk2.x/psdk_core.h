@@ -29,7 +29,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include <legacy_psdk2.x/psdk_typedef.h>
-#include <dji_core.h>
+#include "dji_core.h"
 
 #ifdef __cplusplus
 extern "C" {

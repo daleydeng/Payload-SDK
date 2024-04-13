@@ -29,8 +29,8 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "legacy_psdk2.x/psdk_typedef.h"
-#include <dji_typedef.h>
-#include <dji_upgrade.h>
+#include "dji_typedef.h"
+#include "dji_upgrade.h"
 
 #ifdef __cplusplus
 extern "C" {

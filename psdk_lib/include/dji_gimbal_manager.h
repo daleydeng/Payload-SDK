@@ -28,7 +28,7 @@
 #define DJI_GIMBAL_MANAGER_H
 
 /* Includes ------------------------------------------------------------------*/
-#include <dji_gimbal.h>
+#include "dji_gimbal.h"
 #include "dji_typedef.h"
 
 #ifdef __cplusplus

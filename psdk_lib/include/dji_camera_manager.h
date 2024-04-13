@@ -348,8 +348,7 @@ typedef enum {
  * setting.
  */
 typedef enum {
-    /*! 	The Aperture value is f/1.6. It is only supported by Z30
-       camera.*/
+    /*! The Aperture value is f/1.6. It is only supported by Z30 camera.*/
     DJI_CAMERA_MANAGER_APERTURE_F_1_DOT_6 = 160,
     /*! The Aperture value is f/1.7.*/
     DJI_CAMERA_MANAGER_APERTURE_F_1_DOT_7 = 170,

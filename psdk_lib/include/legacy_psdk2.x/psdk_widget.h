@@ -30,7 +30,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include <legacy_psdk2.x/psdk_typedef.h>
 #include <legacy_psdk2.x/psdk_aircraft_info.h>
-#include <dji_widget.h>
+#include "dji_widget.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -28,7 +28,7 @@
 #define DJI_UPGRADE_H
 
 /* Includes ------------------------------------------------------------------*/
-#include <dji_typedef.h>
+#include "dji_typedef.h"
 
 #ifdef __cplusplus
 extern "C" {

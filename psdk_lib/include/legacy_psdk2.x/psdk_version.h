@@ -28,7 +28,7 @@
 #define PSDK_VERSION_H
 
 /* Includes ------------------------------------------------------------------*/
-#include <dji_version.h>
+#include "dji_version.h"
 
 #ifdef __cplusplus
 extern "C" {
